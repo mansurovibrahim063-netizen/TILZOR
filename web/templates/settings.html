@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Sozlamalar | AI-Moderator{% endblock %}
+{% block page_title %}Tizim sozlamalari va parametrlar{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+
+    {% if message %}
+    <div class="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-sm"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/settings" class="space-y-6">
+
+        <!-- Moderation Settings Card -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-700 pb-3">
+                <i class="fa-solid fa-sliders text-indigo-400"></i>
+                Moderatsiya va Qoidalar
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">
+                        Toksiklik chegarasi (Toxicity Threshold %):
+                    </label>
+                    <input type="number" min="10" max="100" name="TOXICITY_THRESHOLD" value="{{ settings.TOXICITY_THRESHOLD }}" 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Ushbu foizdan yuqori bo'lgan xabarlar avtomatik bloklanadi (Tavsiya: 65%).</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">
+                        Gemini AI Modeli:
+                    </label>
+                    <select name="GEMINI_MODEL" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="gemini-2.5-flash" {% if settings.GEMINI_MODEL == 'gemini-2.5-flash' %}selected{% endif %}>gemini-2.5-flash (Eng tezkor va aniq)</option>
+                        <option value="gemini-1.5-flash" {% if settings.GEMINI_MODEL == 'gemini-1.5-flash' %}selected{% endif %}>gemini-1.5-flash</option>
+                        <option value="gemini-1.5-pro" {% if settings.GEMINI_MODEL == 'gemini-1.5-pro' %}selected{% endif %}>gemini-1.5-pro (Maksimal chuqur tahlil)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="STRICT_LINK_BLOCKING" value="true" {% if settings.STRICT_LINK_BLOCKING %}checked{% endif %} 
+                        class="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-0">
+                    <span class="text-xs text-slate-300 font-medium">Barcha turdagi havolalarni qat'iy bloklash (Saytlar, t.me, niqoblangan domenlar)</span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="ENABLE_FLOOD_PROTECTION" value="true" {% if settings.ENABLE_FLOOD_PROTECTION %}checked{% endif %} 
+                        class="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-0">
+                    <span class="text-xs text-slate-300 font-medium">Flood va takroriy xabarlardan himoyalashni faollashtirish</span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="AUTO_TRANSLATE" value="true" {% if settings.AUTO_TRANSLATE %}checked{% endif %} 
+                        class="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-0">
+                    <span class="text-xs text-slate-300 font-medium">Har bir xabarni avtomatik o'zbek va rus tillariga tarjima qilish</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- API Keys & Secrets Card -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-700 pb-3">
+                <i class="fa-solid fa-key text-amber-400"></i>
+                API Kalitlar va Integratsiyalar
+            </h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Gemini API Kaliti (Google AI Studio):</label>
+                    <input type="password" name="GEMINI_API_KEY" value="{{ settings.GEMINI_API_KEY }}" placeholder="AIzaSy..." 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Google Generative AI tahlili uchun kerak. Bo'sh qoldirilsa zaxira evristik tizim ishlaydi.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Telegram Bot Token (@BotFather):</label>
+                    <input type="password" name="BOT_TOKEN" value="{{ settings.BOT_TOKEN }}" placeholder="123456789:ABCDef..." 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Admin Telegram ID:</label>
+                        <input type="number" name="ADMIN_TELEGRAM_ID" value="{{ settings.ADMIN_TELEGRAM_ID }}" placeholder="77788899" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <p class="text-[10px] text-slate-500 mt-1">Shikoyat kelganda bildirishnoma yuboriladigan profil ID si.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Panel Paroli (Admin Password):</label>
+                        <input type="text" name="ADMIN_PASSWORD" value="{{ settings.ADMIN_PASSWORD }}" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-md shadow-indigo-600/30 flex items-center gap-2">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Sozlamalarni saqlash</span>
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

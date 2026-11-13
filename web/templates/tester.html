@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}AI Tester | AI-Moderator{% endblock %}
+{% block page_title %}Interaktiv AI Moderatsiya Test Laboratoriyasi{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+
+    <!-- Information Card -->
+    <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/30">
+            <i class="fa-solid fa-flask-vial text-lg"></i>
+        </div>
+        <div class="text-xs">
+            <h4 class="font-bold text-white text-sm mb-1">2 Bosqichli Moderatsiya Simulyatori</h4>
+            <p class="text-indigo-200 leading-relaxed">
+                Bu laboratoriyada ixtiyoriy matn, izoh yoki murojaatni 1-bosqich (Regex & Evristika) va 2-bosqich (Gemini AI chuqur kontekstual tahlili) orqali tekshirib ko'rishingiz, shuningdek o'zbek va rus tillariga avtomatik tarjimasini real vaqt rejimida kuzatishingiz mumkin.
+            </p>
+        </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+        <label class="block text-xs font-semibold text-slate-300 mb-2">Sinov matnini kiriting:</label>
+        <textarea id="testInput" rows="4" placeholder="Tekshirish uchun xabar, izoh yoki reklama matnini bu yerga yozing..." 
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"></textarea>
+
+        <!-- Quick Preset Samples -->
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 font-medium mr-1">Namuna shablonlar:</span>
+            <button onclick="setSample('clean')" class="px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-emerald-400 text-[11px] transition-colors border border-slate-600/50">
+                🟢 Toza fikr
+            </button>
+            <button onclick="setSample('link')" class="px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-blue-400 text-[11px] transition-colors border border-slate-600/50">
+                🔗 Havola (Link)
+            </button>
+            <button onclick="setSample('cta')" class="px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-purple-400 text-[11px] transition-colors border border-slate-600/50">
+                📢 Taqiqlangan chaqiriq (CTA)
+            </button>
+            <button onclick="setSample('insult')" class="px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-red-400 text-[11px] transition-colors border border-slate-600/50">
+                🤬 Yashirin haqorat
+            </button>
+            <button onclick="setSample('spam')" class="px-2.5 py-1 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-yellow-400 text-[11px] transition-colors border border-slate-600/50">
+                ⚠️ Reklama / Spam
+            </button>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button id="runBtn" onclick="runTest()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-md shadow-indigo-600/30">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Tahlil qilish</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Results Section (Hidden initially) -->
+    <div id="resultsCard" class="hidden space-y-6">
+
+        <!-- Final Verdict Banner -->
+        <div id="verdictBanner" class="p-5 rounded-2xl border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div id="verdictIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl text-white"></div>
+                <div>
+                    <h3 id="verdictTitle" class="font-bold text-base"></h3>
+                    <p id="verdictSubtitle" class="text-xs"></p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-slate-400">Toksiklik ko'rsatkichi</div>
+                <div id="toxicityBadge" class="text-xl font-bold font-mono"></div>
+            </div>
+        </div>
+
+        <!-- Stages Breakdown Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- 1-Bosqich: Regex Engine -->
+            <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center text-xs font-bold">1</span>
+                        <h4 class="font-bold text-white text-xs">Regex & Evristika bosqichi</h4>
+                    </div>
+                    <span id="regexBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"></span>
+                </div>
+                <div class="text-xs space-y-2">
+                    <div>
+                        <span class="text-slate-400">Vazifalari:</span>
+                        <span class="text-slate-200 ml-1">URL, Telegram havolalari, ochiq so'kinish, flood.</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Aniqlangan qoidabuzarlik:</span>
+                        <span id="regexViolation" class="font-semibold text-slate-100 ml-1"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Izoh:</span>
+                        <p id="regexReason" class="mt-1 p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2-Bosqich: Gemini AI -->
+            <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">2</span>
+                        <h4 class="font-bold text-white text-xs">Gemini AI Semantik Tahlil</h4>
+                    </div>
+                    <span id="geminiBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"></span>
+                </div>
+                <div class="text-xs space-y-2">
+                    <div>
+                        <span class="text-slate-400">Vazifalari:</span>
+                        <span class="text-slate-200 ml-1">Kontekst, yashirin kinoya, chaqiriqlar (CTA), spam.</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Aniqlangan qoidabuzarlik:</span>
+                        <span id="geminiViolation" class="font-semibold text-slate-100 ml-1"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">AI Xulosasi:</span>
+                        <p id="geminiReason" class="mt-1 p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300"></p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Auto Translations Grid -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+            <h4 class="font-bold text-white text-xs mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-language text-indigo-400 text-base"></i>
+                Avtomatik Tarjima Natijalari (O'zbek va Rus tillarida)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                    <label class="text-indigo-400 font-semibold mb-1 block">🇺🇿 O'zbek tili:</label>
+                    <div id="transUz" class="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 min-h-[50px]"></div>
+                </div>
+                <div>
+                    <label class="text-blue-400 font-semibold mb-1 block">🇷🇺 Rus tili:</label>
+                    <div id="transRu" class="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 min-h-[50px]"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const samples = {
+        clean: "Assalomu alaykum hurmatli jamoa! Loyiha juda ajoyib ishlanibdi, yangi yangiliklarni kutib qolamiz.",
+        link: "Do'stlar, eng yaxshi yangiliklar bizning kanalda: https://t.me/yangiliklar_kanali yoki kanal[dot]uz ga kiring",
+        cta: "Katta daromad topishni xohlaysizmi? Kuniga 300$ ishlash uchun profilimga kiring yoki lichkamga yozing!",
+        insult: "Sen savodsiz ekansan, miyang yetmaydi bunaqa murakkab narsalarni tushunishga, ahmoq.",
+        spam: "DIQQAT AKSIYA! Barcha mahsulotlar 70% chegirma bilan sotiladi, hoziroq buyurtma bering!"
+    };
+
+    function setSample(type) {
+        document.getElementById('testInput').value = samples[type] || '';
+    }
+
+    async function runTest() {
+        const text = document.getElementById('testInput').value.trim();
+        if (!text) {
+            alert("Iltimos, avval matn kiriting!");
+            return;
+        }
+
+        const btn = document.getElementById('runBtn');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Tekshirilmoqda...';
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch('/api/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            const data = await resp.json();
+
+            // Populate Results
+            document.getElementById('resultsCard').classList.remove('hidden');
+
+            // Verdict
+            const banner = document.getElementById('verdictBanner');
+            const icon = document.getElementById('verdictIcon');
+            const title = document.getElementById('verdictTitle');
+            const sub = document.getElementById('verdictSubtitle');
+            const toxBadge = document.getElementById('toxicityBadge');
+
+            if (data.is_violation) {
+                banner.className = "p-5 rounded-2xl border flex items-center justify-between bg-red-950/40 border-red-500/40 text-red-400";
+                icon.className = "w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-xl text-white shadow-lg shadow-red-600/30";
+                icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
+                title.innerText = "XABAR BLOKLANDI";
+                title.className = "font-bold text-base text-red-400";
+                sub.innerText = `Qoidabuzarlik: ${data.violation_type} (${data.reason})`;
+                sub.className = "text-xs text-red-300";
+                toxBadge.className = "text-xl font-bold font-mono text-red-400";
+            } else {
+                banner.className = "p-5 rounded-2xl border flex items-center justify-between bg-emerald-950/40 border-emerald-500/40 text-emerald-400";
+                icon.className = "w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-xl text-white shadow-lg shadow-emerald-600/30";
+                icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                title.innerText = "XABARGA RUXSAT BERILDI";
+                title.className = "font-bold text-base text-emerald-400";
+                sub.innerText = "Xabar barcha moderatsiya qoidalariga to'liq javob beradi.";
+                sub.className = "text-xs text-emerald-300";
+                toxBadge.className = "text-xl font-bold font-mono text-emerald-400";
+            }
+            toxBadge.innerText = Math.round(data.toxicity_score) + '%';
+
+            // Stage 1 (Regex)
+            const regBadge = document.getElementById('regexBadge');
+            if (data.regex.is_violation) {
+                regBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30";
+                regBadge.innerText = "Qoidabuzarlik";
+            } else {
+                regBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                regBadge.innerText = "Toza o'tdi";
+            }
+            document.getElementById('regexViolation').innerText = data.regex.violation_type;
+            document.getElementById('regexReason').innerText = data.regex.reason;
+
+            // Stage 2 (Gemini)
+            const gemBadge = document.getElementById('geminiBadge');
+            if (data.gemini.is_violation) {
+                gemBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30";
+                gemBadge.innerText = "Qoidabuzarlik";
+            } else {
+                gemBadge.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                gemBadge.innerText = "Toza o'tdi";
+            }
+            document.getElementById('geminiViolation').innerText = data.gemini.violation_type;
+            document.getElementById('geminiReason').innerText = data.gemini.reason;
+
+            // Translations
+            document.getElementById('transUz').innerText = data.translated_uz || text;
+            document.getElementById('transRu').innerText = data.translated_ru || text;
+
+        } catch (err) {
+            alert("Tekshirishda xatolik yuz berdi: " + err);
+        } finally {
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> <span>Tahlil qilish</span>';
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

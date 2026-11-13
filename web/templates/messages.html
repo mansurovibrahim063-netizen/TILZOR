@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Xabarlar jurnali | AI-Moderator{% endblock %}
+{% block page_title %}Xabarlar jurnali va moderatsiya natijalari{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Filters & Search Bar -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+        <form method="GET" action="/messages" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            
+            <!-- Search -->
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">Qidiruv (matn, ism yoki sabab)</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" name="search" value="{{ current_search }}" placeholder="Qidiruv so'zini kiriting..." 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors">
+                </div>
+            </div>
+
+            <!-- Filter Status -->
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">Holat (Status)</label>
+                <select name="status" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors">
+                    <option value="ALL" {% if current_status == 'ALL' %}selected{% endif %}>Barchasi</option>
+                    <option value="ALLOWED" {% if current_status == 'ALLOWED' %}selected{% endif %}>Ruxsat berilgan (Allowed)</option>
+                    <option value="BLOCKED" {% if current_status == 'BLOCKED' %}selected{% endif %}>Bloklangan (Blocked)</option>
+                    <option value="REPORTED" {% if current_status == 'REPORTED' %}selected{% endif %}>Shikoyat qilingan (Reported)</option>
+                </select>
+            </div>
+
+            <!-- Filter Stage -->
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1.5">Bosqich (Stage)</label>
+                <select name="stage" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors">
+                    <option value="ALL" {% if current_stage == 'ALL' %}selected{% endif %}>Barchasi</option>
+                    <option value="REGEX" {% if current_stage == 'REGEX' %}selected{% endif %}>1-Regex Engine</option>
+                    <option value="GEMINI" {% if current_stage == 'GEMINI' %}selected{% endif %}>2-Gemini AI</option>
+                    <option value="CLEAN" {% if current_stage == 'CLEAN' %}selected{% endif %}>Toza</option>
+                </select>
+            </div>
+
+            <!-- Filter Violation Type & Submit -->
+            <div class="flex items-end gap-2">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Qoidabuzarlik</label>
+                    <select name="violation_type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors">
+                        <option value="ALL" {% if current_violation == 'ALL' %}selected{% endif %}>Barchasi</option>
+                        <option value="INSULT" {% if current_violation == 'INSULT' %}selected{% endif %}>Haqorat</option>
+                        <option value="LINK" {% if current_violation == 'LINK' %}selected{% endif %}>Havola</option>
+                        <option value="CTA" {% if current_violation == 'CTA' %}selected{% endif %}>Chaqiriq (CTA)</option>
+                        <option value="SPAM" {% if current_violation == 'SPAM' %}selected{% endif %}>Spam</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-4 py-2 text-xs font-medium transition-colors shadow-sm h-[34px]">
+                    Filtr
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Messages Table -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="bg-slate-950/50 border-b border-slate-700/60 text-slate-400 uppercase tracking-wider">
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">Yuboruvchi</th>
+                        <th class="py-3 px-4">Asl xabar</th>
+                        <th class="py-3 px-4">Tarjima (O'zbek / Rus)</th>
+                        <th class="py-3 px-4">Bosqich</th>
+                        <th class="py-3 px-4">Turi</th>
+                        <th class="py-3 px-4">Toksiklik</th>
+                        <th class="py-3 px-4">Holat</th>
+                        <th class="py-3 px-4 text-right">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                    {% for msg in messages %}
+                    <tr class="hover:bg-slate-700/30 transition-colors">
+                        <td class="py-3.5 px-4 font-mono text-slate-500">#{{ msg.id }}</td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-medium text-slate-200">{{ msg.sender_name or "Noma'lum" }}</div>
+                            <div class="text-[10px] text-slate-500">ID: {{ msg.user_telegram_id }}</div>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-xs truncate text-slate-300 font-medium">
+                            {{ msg.original_text }}
+                        </td>
+                        <td class="py-3.5 px-4 max-w-xs text-slate-400 text-[11px]">
+                            <div class="truncate"><span class="text-indigo-400 font-semibold">UZ:</span> {{ msg.translated_uz or msg.original_text }}</div>
+                            <div class="truncate text-slate-500"><span class="text-blue-400 font-semibold">RU:</span> {{ msg.translated_ru or msg.original_text }}</div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% if msg.detection_stage == 'REGEX' %}
+                            <span class="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px] font-semibold">1-Regex</span>
+                            {% elif msg.detection_stage == 'GEMINI' %}
+                            <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold">2-Gemini AI</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 text-[10px]">Toza</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% if msg.violation_type == 'LINK' %}
+                            <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Havola</span>
+                            {% elif msg.violation_type == 'INSULT' %}
+                            <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 font-medium">Haqorat</span>
+                            {% elif msg.violation_type == 'CTA' %}
+                            <span class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-medium">Chaqiriq</span>
+                            {% elif msg.violation_type == 'SPAM' %}
+                            <span class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-medium">Spam</span>
+                            {% else %}
+                            <span class="text-slate-500">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-12 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                    <div class="h-full rounded-full {% if msg.toxicity_score > 60 %}bg-red-500{% elif msg.toxicity_score > 30 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width: {{ msg.toxicity_score }}%"></div>
+                                </div>
+                                <span class="text-[11px] font-mono text-slate-300">{{ msg.toxicity_score|int }}%</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% if msg.status == 'BLOCKED' %}
+                            <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-circle-xmark text-[9px]"></i> Bloklandi
+                            </span>
+                            {% elif msg.status == 'REPORTED' %}
+                            <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-flag text-[9px]"></i> Shikoyat
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-circle-check text-[9px]"></i> O'tdi
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <button onclick="openModal({{ msg.id }}, {{ msg.original_text|tojson }}, {{ (msg.translated_uz or '')|tojson }}, {{ (msg.translated_ru or '')|tojson }}, {{ (msg.reason or '')|tojson }}, '{{ msg.status }}', '{{ msg.detection_stage }}', '{{ msg.violation_type }}', {{ msg.toxicity_score }})" 
+                                class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded-lg text-[11px] transition-colors">
+                                <i class="fa-solid fa-eye mr-1"></i> Tafsilot
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-slate-500">Hech qanday xabar topilmadi.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="px-6 py-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+            <div>Jami: <strong class="text-white">{{ total_count }}</strong> ta xabar</div>
+            <div class="flex items-center gap-2">
+                {% if page > 1 %}
+                <a href="/messages?page={{ page - 1 }}&status={{ current_status }}&stage={{ current_stage }}&violation_type={{ current_violation }}&search={{ current_search }}" 
+                   class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                    &larr; Oldingi
+                </a>
+                {% endif %}
+                <span class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300">Sahifa {{ page }}</span>
+                {% if (page * limit) < total_count %}
+                <a href="/messages?page={{ page + 1 }}&status={{ current_status }}&stage={{ current_stage }}&violation_type={{ current_violation }}&search={{ current_search }}" 
+                   class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                    Keyingi &rarr;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Message Detail Modal -->
+<div id="detailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative">
+        <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-indigo-400"></i>
+            Xabar tafsilotlari va tarjimalari
+        </h3>
+
+        <div class="space-y-4 text-xs">
+            <div>
+                <label class="font-semibold text-slate-400">Asl matn:</label>
+                <div id="modalOriginal" class="mt-1 p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 font-sans"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="font-semibold text-indigo-400">🇺🇿 O'zbekcha tarjima:</label>
+                    <div id="modalUz" class="mt-1 p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200"></div>
+                </div>
+                <div>
+                    <label class="font-semibold text-blue-400">🇷🇺 Ruscha tarjima:</label>
+                    <div id="modalRu" class="mt-1 p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-900/60 rounded-xl border border-slate-700/60">
+                <div>
+                    <span class="text-slate-500 block">Bosqich:</span>
+                    <span id="modalStage" class="font-semibold text-white"></span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">Qoidabuzarlik:</span>
+                    <span id="modalViolation" class="font-semibold text-white"></span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">Toksiklik:</span>
+                    <span id="modalToxicity" class="font-semibold text-white"></span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">Holat:</span>
+                    <span id="modalStatus" class="font-semibold text-white"></span>
+                </div>
+            </div>
+
+            <div>
+                <label class="font-semibold text-slate-400">Moderatsiya sababi / Tahlil xulosasi:</label>
+                <div id="modalReason" class="mt-1 p-3 rounded-xl bg-slate-900 border border-slate-700 text-amber-300"></div>
+            </div>
+
+            <!-- Action buttons inside modal -->
+            <div class="pt-3 border-t border-slate-700 flex justify-end gap-2">
+                <form id="actionForm" method="POST" action="/messages/status">
+                    <input type="hidden" name="message_id" id="modalMessageId" value="">
+                    <input type="hidden" name="new_status" id="modalNewStatus" value="">
+                    <button type="button" onclick="changeStatus('ALLOWED')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                        <i class="fa-solid fa-check mr-1"></i> Oqlash (Ruxsat berish)
+                    </button>
+                    <button type="button" onclick="changeStatus('BLOCKED')" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition-colors">
+                        <i class="fa-solid fa-ban mr-1"></i> Bloklash
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openModal(id, original, uz, ru, reason, status, stage, violation, toxicity) {
+        document.getElementById('modalMessageId').value = id;
+        document.getElementById('modalOriginal').innerText = original;
+        document.getElementById('modalUz').innerText = uz || original;
+        document.getElementById('modalRu').innerText = ru || original;
+        document.getElementById('modalReason').innerText = reason || "Qoidabuzarlik sababi ko'rsatilmagan";
+        document.getElementById('modalStage').innerText = stage;
+        document.getElementById('modalViolation').innerText = violation;
+        document.getElementById('modalToxicity').innerText = toxicity + '%';
+        document.getElementById('modalStatus').innerText = status;
+
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    function changeStatus(newStatus) {
+        document.getElementById('modalNewStatus').value = newStatus;
+        document.getElementById('actionForm').submit();
+    }
+</script>
+{% endblock %}

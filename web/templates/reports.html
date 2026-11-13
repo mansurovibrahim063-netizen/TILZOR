@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Shikoyatlar | AI-Moderator{% endblock %}
+{% block page_title %}Foydalanuvchilar shikoyatlari (Shikoyatlar paneli){% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Header Stats / Info -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h3 class="font-semibold text-white">Shikoyatlarni ko'rib chiqish navbati</h3>
+            <p class="text-xs text-slate-400">Moderatsiyadan o'tgan yoki shubhali deb topilgan xabarlar ustidan yuborilgan murojaatlar</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/reports?status=PENDING" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors {% if current_status == 'PENDING' %}bg-amber-500 text-slate-900 font-bold{% else %}bg-slate-700 text-slate-300 hover:bg-slate-600{% endif %}">
+                Kutilayotganlar
+            </a>
+            <a href="/reports?status=APPROVED" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors {% if current_status == 'APPROVED' %}bg-emerald-500 text-slate-900 font-bold{% else %}bg-slate-700 text-slate-300 hover:bg-slate-600{% endif %}">
+                Tasdiqlanganlar
+            </a>
+            <a href="/reports?status=REJECTED" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors {% if current_status == 'REJECTED' %}bg-red-500 text-white font-bold{% else %}bg-slate-700 text-slate-300 hover:bg-slate-600{% endif %}">
+                Rad etilganlar
+            </a>
+            <a href="/reports?status=ALL" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-colors {% if current_status == 'ALL' %}bg-indigo-600 text-white font-bold{% else %}bg-slate-700 text-slate-300 hover:bg-slate-600{% endif %}">
+                Barchasi
+            </a>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="bg-slate-950/50 border-b border-slate-700/60 text-slate-400 uppercase tracking-wider">
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">Shikoyatchi</th>
+                        <th class="py-3 px-4">Shikoyat sababi</th>
+                        <th class="py-3 px-4">Shikoyat qilingan xabar</th>
+                        <th class="py-3 px-4">Sana</th>
+                        <th class="py-3 px-4">Holat</th>
+                        <th class="py-3 px-4 text-right">Moderator qarori</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                    {% for rep in reports %}
+                    <tr class="hover:bg-slate-700/30 transition-colors">
+                        <td class="py-3.5 px-4 font-mono text-slate-500">#{{ rep.id }}</td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-medium text-slate-200">{{ rep.reporter_name or "Noma'lum" }}</div>
+                            <div class="text-[10px] text-slate-500">ID: {{ rep.reporter_telegram_id }}</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-amber-300 font-medium max-w-xs">
+                            {{ rep.reason }}
+                        </td>
+                        <td class="py-3.5 px-4 max-w-md">
+                            {% if rep.message %}
+                            <div class="p-2 rounded-lg bg-slate-900 border border-slate-700/80 text-slate-300 truncate">
+                                "{{ rep.message.original_text }}"
+                            </div>
+                            <div class="mt-1 text-[10px] text-slate-500">
+                                Muallif: {{ rep.message.sender_name }} (ID: {{ rep.message.user_telegram_id }})
+                            </div>
+                            {% else %}
+                            <span class="text-slate-500">Xabar o'chirilgan</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                            {{ rep.created_at.strftime('%d.%m.%Y %H:%M') }}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            {% if rep.status == 'PENDING' %}
+                            <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-clock text-[9px]"></i> Kutilmoqda
+                            </span>
+                            {% elif rep.status == 'APPROVED' %}
+                            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-check text-[9px]"></i> Tasdiqlandi
+                            </span>
+                            {% elif rep.status == 'REJECTED' %}
+                            <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-semibold flex items-center w-max gap-1">
+                                <i class="fa-solid fa-xmark text-[9px]"></i> Rad etildi
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                            {% if rep.status == 'PENDING' %}
+                            <div class="flex items-center justify-end gap-1.5">
+                                <form method="POST" action="/reports/resolve">
+                                    <input type="hidden" name="report_id" value="{{ rep.id }}">
+                                    <input type="hidden" name="action" value="APPROVED">
+                                    <button type="submit" title="Tasdiqlash va xabarni bloklash" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors">
+                                        <i class="fa-solid fa-check mr-1"></i> Qoidabuzar
+                                    </button>
+                                </form>
+                                <form method="POST" action="/reports/resolve">
+                                    <input type="hidden" name="report_id" value="{{ rep.id }}">
+                                    <input type="hidden" name="action" value="REJECTED">
+                                    <button type="submit" title="Rad etish (Asossiz shikoyat)" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors">
+                                        <i class="fa-solid fa-xmark mr-1"></i> Rad etish
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-slate-500 text-[11px]">Ko'rib chiqilgan</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-500">Hech qanday shikoyat mavjud emas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+            <div>Jami shikoyatlar: <strong class="text-white">{{ total_count }}</strong> ta</div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

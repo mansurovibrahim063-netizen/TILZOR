@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | AI-Moderator{% endblock %}
+{% block page_title %}Tizim ko'rsatkichlari va tahlil{% endblock %}
+
+{% block content %}
+<div class="space-y-8 max-w-7xl mx-auto">
+
+    <!-- KPI Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Card 1 -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium text-slate-400">Jami tekshirilgan</span>
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                    <i class="fa-solid fa-envelope-open-text"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ stats.total_messages }}</div>
+            <div class="mt-2 flex items-center text-xs text-slate-400">
+                <span class="text-emerald-400 font-semibold mr-1.5"><i class="fa-solid fa-arrow-trend-up"></i> +{{ stats.today_messages }}</span>
+                <span>bugun kelib tushdi</span>
+            </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium text-slate-400">Bloklangan xabarlar</span>
+                <div class="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ stats.total_blocked }}</div>
+            <div class="mt-2 flex items-center text-xs text-slate-400">
+                <span class="text-red-400 font-semibold mr-1.5">{{ stats.block_rate }}%</span>
+                <span>umumiy xabarlarning ulushi</span>
+            </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium text-slate-400">Xavfsiz / O'tkazilgan</span>
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ stats.total_allowed }}</div>
+            <div class="mt-2 flex items-center text-xs text-slate-400">
+                <span class="text-emerald-400 font-semibold mr-1.5">{{ 100.0 - stats.block_rate }}%</span>
+                <span>toza xabarlar ko'rsatkichi</span>
+            </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition-all">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium text-slate-400">Kutilayotgan shikoyatlar</span>
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ stats.pending_reports }}</div>
+            <div class="mt-2 flex items-center text-xs text-slate-400">
+                <span>Jami ro'yxatdan o'tgan: <strong class="text-slate-300">{{ stats.total_reports }}</strong> ta</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Chart 1: 7-kunlik dinamika (2 cols) -->
+        <div class="lg:col-span-2 bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="font-semibold text-white">Oxirgi 7 kunlik moderatsiya dinamikasi</h3>
+                    <p class="text-xs text-slate-400">Ruxsat berilgan va bloklangan xabarlar kesimida</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Toza</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500"></span> Bloklangan</span>
+                </div>
+            </div>
+            <div class="h-64">
+                <canvas id="dailyTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Qoidabuzarlik turlari (1 col) -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+            <div class="mb-4">
+                <h3 class="font-semibold text-white">Qoidabuzarlik turlari</h3>
+                <p class="text-xs text-slate-400">Aniqlangan qoidabuzarliklar ulushi</p>
+            </div>
+            <div class="h-64 flex items-center justify-center">
+                <canvas id="violationPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Charts & Recent Messages -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Chart 3: Bosqichlar (Regex vs Gemini) -->
+        <div class="bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+            <div class="mb-4">
+                <h3 class="font-semibold text-white">Moderatsiya bosqichlari</h3>
+                <p class="text-xs text-slate-400">1-bosqich (Regex) va 2-bosqich (Gemini AI)</p>
+            </div>
+            <div class="h-64 flex items-center justify-center">
+                <canvas id="stageBarChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Activity Table (2 cols) -->
+        <div class="lg:col-span-2 bg-slate-800/60 backdrop-blur border border-slate-700/60 rounded-2xl p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-semibold text-white">Oxirgi moderatsiya qilingan xabarlar</h3>
+                    <p class="text-xs text-slate-400">Real vaqt rejimida qayta ishlangan natijalar</p>
+                </div>
+                <a href="/messages" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Barchasini ko'rish &rarr;</a>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-700/60 text-slate-400 uppercase tracking-wider">
+                            <th class="py-2.5 px-3">Foydalanuvchi</th>
+                            <th class="py-2.5 px-3">Xabar matni</th>
+                            <th class="py-2.5 px-3">Bosqich</th>
+                            <th class="py-2.5 px-3">Turi</th>
+                            <th class="py-2.5 px-3">Holat</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        {% for msg in recent_messages %}
+                        <tr class="hover:bg-slate-700/30 transition-colors">
+                            <td class="py-3 px-3 font-medium text-slate-200">
+                                <div>{{ msg.sender_name or "Noma'lum" }}</div>
+                                <div class="text-[10px] text-slate-500">ID: {{ msg.user_telegram_id }}</div>
+                            </td>
+                            <td class="py-3 px-3 max-w-xs truncate text-slate-300">
+                                {{ msg.original_text }}
+                            </td>
+                            <td class="py-3 px-3">
+                                {% if msg.detection_stage == 'REGEX' %}
+                                <span class="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px] font-semibold">1-Regex</span>
+                                {% elif msg.detection_stage == 'GEMINI' %}
+                                <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold">2-Gemini</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 text-[10px]">Toza</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-3">
+                                {% if msg.violation_type == 'LINK' %}
+                                <span class="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 font-medium text-[11px]">Havola</span>
+                                {% elif msg.violation_type == 'INSULT' %}
+                                <span class="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 font-medium text-[11px]">Haqorat</span>
+                                {% elif msg.violation_type == 'CTA' %}
+                                <span class="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 font-medium text-[11px]">Chaqiriq</span>
+                                {% elif msg.violation_type == 'SPAM' %}
+                                <span class="px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 font-medium text-[11px]">Spam</span>
+                                {% else %}
+                                <span class="text-slate-500">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-3">
+                                {% if msg.status == 'BLOCKED' %}
+                                <span class="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                    <i class="fa-solid fa-circle-xmark text-[9px]"></i> Bloklandi
+                                </span>
+                                {% elif msg.status == 'REPORTED' %}
+                                <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                    <i class="fa-solid fa-flag text-[9px]"></i> Shikoyat
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold flex items-center w-max gap-1">
+                                    <i class="fa-solid fa-circle-check text-[9px]"></i> O'tdi
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="py-6 text-center text-slate-500">Hozircha xabarlar mavjud emas. Guruhdagi xabarlar yoki test natijalari bu yerda aks etadi.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dailyData = {{ stats.daily_trend | tojson }};
+    const violationsData = {{ stats.violations_breakdown | tojson }};
+    const stageData = {{ stats.stage_breakdown | tojson }};
+
+    // 1. Daily Trend Chart
+    const ctxTrend = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(ctxTrend, {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date),
+            datasets: [
+                {
+                    label: 'Ruxsat berilgan',
+                    data: dailyData.map(d => d.allowed),
+                    backgroundColor: '#10b981',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Bloklangan',
+                    data: dailyData.map(d => d.blocked),
+                    backgroundColor: '#ef4444',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                y: { stacked: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // 2. Violation Breakdown Chart
+    const ctxPie = document.getElementById('violationPieChart').getContext('2d');
+    const vLabels = Object.keys(violationsData).length > 0 ? Object.keys(violationsData) : ['Spam', 'Havola', 'Haqorat', 'Chaqiriq (CTA)'];
+    const vValues = Object.keys(violationsData).length > 0 ? Object.values(violationsData) : [12, 19, 8, 5];
+
+    new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: vLabels,
+            datasets: [{
+                data: vValues,
+                backgroundColor: ['#eab308', '#3b82f6', '#ef4444', '#a855f7', '#06b6d4'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 11 } }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+
+    // 3. Stage Chart
+    const ctxStage = document.getElementById('stageBarChart').getContext('2d');
+    new Chart(ctxStage, {
+        type: 'pie',
+        data: {
+            labels: ['1-Regex Engine', '2-Gemini AI', 'Toza (Clean)'],
+            datasets: [{
+                data: [
+                    stageData['REGEX'] || 0,
+                    stageData['GEMINI'] || 0,
+                    stageData['CLEAN'] || 0
+                ],
+                backgroundColor: ['#f97316', '#6366f1', '#10b981'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 11 } }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
